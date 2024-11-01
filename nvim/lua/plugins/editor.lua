@@ -188,7 +188,7 @@ return {
 						path = "%:p:h",
 						cwd = telescope_buffer_dir(),
 						respect_gitignore = false,
-						hidden = true,
+						hidden = true, -- This shows dotfiles
 						grouped = true,
 						previewer = false,
 						initial_mode = "normal",

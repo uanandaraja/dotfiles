@@ -60,6 +60,67 @@ return {
 		},
 	},
 
+	{
+		"petertriho/nvim-scrollbar",
+		event = "BufReadPost",
+		dependencies = {
+			"lewis6991/gitsigns.nvim",
+			"kevinhwang91/nvim-hlslens",
+		},
+		config = function()
+			require("scrollbar").setup({
+				show = true,
+				handle = {
+					text = " ",
+					blend = 30,
+					highlight = "CursorColumn",
+					hide_if_all_visible = true,
+				},
+				handlers = {
+					cursor = true,
+					diagnostic = true,
+					gitsigns = true,
+					handle = true,
+					search = true,
+				},
+			})
+
+			-- Setup git integration
+			require("scrollbar.handlers.gitsigns").setup()
+
+			-- Setup search integration
+			require("scrollbar.handlers.search").setup({
+				-- override_lens = function() end, -- Disable virtual text
+			})
+		end,
+	},
+
+	{
+		"nvim-neo-tree/neo-tree.nvim",
+		branch = "v3.x",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"nvim-tree/nvim-web-devicons",
+			"MunifTanjim/nui.nvim",
+		},
+		config = function()
+			require("neo-tree").setup({
+				filesystem = {
+					filtered_items = {
+						visible = true,
+						hide_dotfiles = false,
+						hide_gitignored = false,
+					},
+				},
+				window = {
+					position = "left",
+					width = 30,
+				},
+			})
+			vim.keymap.set("n", "<leader>e", ":Neotree toggle<CR>")
+		end,
+	},
+
 	-- animations
 	{
 		"echasnovski/mini.animate",
@@ -68,7 +129,6 @@ return {
 			opts.scroll = {
 				enable = false,
 			}
-			-- Add these configurations for near-instant animations
 			opts.cursor = {
 				timing = function()
 					return 1
@@ -110,19 +170,27 @@ return {
 		},
 	},
 
+	{
+		"MeanderingProgrammer/render-markdown.nvim",
+		dependencies = { "nvim-lua/plenary.nvim" },
+		config = function()
+			require("render-markdown").setup({})
+		end,
+		ft = { "markdown" }, -- Load only for markdown files
+	},
+
 	-- filename
 	{
 		"b0o/incline.nvim",
-		dependencies = { "craftzdog/solarized-osaka.nvim" },
 		event = "BufReadPre",
 		priority = 1200,
 		config = function()
-			local colors = require("solarized-osaka.colors").setup()
+			local rosepine = require("rose-pine.palette")
 			require("incline").setup({
 				highlight = {
 					groups = {
-						InclineNormal = { guibg = colors.magenta500, guifg = colors.base04 },
-						InclineNormalNC = { guifg = colors.violet500, guibg = colors.base03 },
+						InclineNormal = { guibg = rosepine.iris, guifg = rosepine.base },
+						InclineNormalNC = { guifg = rosepine.subtle, guibg = rosepine.overlay },
 					},
 				},
 				window = { margin = { vertical = 0, horizontal = 1 } },
