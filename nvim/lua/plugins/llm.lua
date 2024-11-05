@@ -430,6 +430,125 @@ return {
 				vim.api.nvim_buf_set_var(bufnr, "url_content_" .. url, content)
 			end
 
+			local function get_diagnostic_text(diagnostic)
+				local severity = vim.diagnostic.severity
+				local severity_text = {
+					[severity.ERROR] = "ERROR",
+					[severity.WARN] = "WARNING",
+					[severity.INFO] = "INFO",
+					[severity.HINT] = "HINT",
+				}
+
+				return string.format("[%s] %s", severity_text[diagnostic.severity], diagnostic.message)
+			end
+
+			local function format_diagnostics(bufnr, range)
+				local diagnostics = vim.diagnostic.get(bufnr)
+				if #diagnostics == 0 then
+					return nil
+				end
+
+				local content = {}
+				local context_lines = 2 -- lines before/after error
+				local file_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+				local filepath = vim.api.nvim_buf_get_name(bufnr)
+				local file_ext = vim.fn.fnamemodify(filepath, ":e")
+
+				for _, diag in ipairs(diagnostics) do
+					local start_line = math.max(0, diag.lnum - context_lines)
+					local end_line = math.min(#file_lines, diag.lnum + context_lines + 1)
+
+					table.insert(content, string.format("In file %s:", filepath))
+					table.insert(content, get_diagnostic_text(diag))
+					table.insert(content, "```" .. file_ext)
+
+					for i = start_line, end_line - 1 do
+						local prefix = i == diag.lnum and ">" or " "
+						table.insert(content, string.format("%s %4d │ %s", prefix, i + 1, file_lines[i + 1]))
+					end
+
+					table.insert(content, "```\n")
+				end
+
+				return table.concat(content, "\n")
+			end
+
+			local function add_error_reference(bufnr, range)
+				local diagnostic_text = format_diagnostics(bufnr, range)
+				if not diagnostic_text then
+					vim.notify("No diagnostics found in buffer", "warn")
+					return
+				end
+
+				local llm_bufnr = create_or_get_buffer()
+				local lines = vim.api.nvim_buf_get_lines(llm_bufnr, 0, -1, false)
+				local error_block = vim.split(diagnostic_text, "\n")
+
+				vim.api.nvim_buf_set_lines(llm_bufnr, #lines, #lines, false, error_block)
+				vim.notify("Added error reference", "info")
+			end
+
+			local function show_error_buffer_picker()
+				local buffers_with_errors = {}
+				for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+					if vim.api.nvim_buf_is_loaded(bufnr) then
+						local diagnostics = vim.diagnostic.get(bufnr)
+						if #diagnostics > 0 then
+							local name = vim.api.nvim_buf_get_name(bufnr)
+							if name and name ~= "" then
+								table.insert(buffers_with_errors, {
+									text = string.format(
+										"%s (%d issues)",
+										vim.fn.fnamemodify(name, ":."),
+										#diagnostics
+									),
+									bufnr = bufnr,
+								})
+							end
+						end
+					end
+				end
+
+				if #buffers_with_errors == 0 then
+					vim.notify("No buffers with errors found", "warn")
+					return
+				end
+
+				local menu = Menu({
+					position = "50%",
+					size = {
+						width = 60,
+						height = math.min(#buffers_with_errors + 2, 20),
+					},
+					border = {
+						style = "rounded",
+						text = {
+							top = "[Select Buffer with Errors]",
+							top_align = "center",
+						},
+					},
+					win_options = {
+						winhighlight = "Normal:Normal,FloatBorder:Normal",
+					},
+				}, {
+					lines = vim.tbl_map(function(buf)
+						return Menu.item(buf.text, { bufnr = buf.bufnr })
+					end, buffers_with_errors),
+					keymap = {
+						focus_next = { "j", "<Down>", "<Tab>" },
+						focus_prev = { "k", "<Up>", "<S-Tab>" },
+						close = { "<Esc>", "<C-c>" },
+						submit = { "<CR>", "<Space>" },
+					},
+					on_submit = function(item)
+						add_error_reference(item.bufnr)
+					end,
+				})
+
+				menu:mount()
+				menu:on(event.BufLeave, menu.menu_props.on_close, { once = true })
+			end
+
 			-- Buffer content functions
 			local function get_buffer_content(filepath)
 				local bufnr = vim.fn.bufnr(filepath)
@@ -516,6 +635,25 @@ return {
 							add_url_reference(url)
 						end
 					end, { desc = "Add URL reference" })
+
+					map("n", "<leader>le", function()
+						add_error_reference(vim.fn.bufnr())
+					end, { desc = "Add errors from current buffer" })
+
+					map("n", "<leader>lE", function()
+						show_error_buffer_picker()
+					end, { desc = "Add errors from any buffer" })
+
+					-- Optional: Add selected range errors
+					map("v", "<leader>le", function()
+						local start_pos = vim.fn.getpos("'<")
+						local end_pos = vim.fn.getpos("'>")
+						local range = {
+							start = start_pos[2] - 1,
+							["end"] = end_pos[2],
+						}
+						add_error_reference(vim.fn.bufnr(), range)
+					end, { desc = "Add errors from selection" })
 
 					setup_session_autocmds(bufnr)
 					load_last_session(bufnr)
