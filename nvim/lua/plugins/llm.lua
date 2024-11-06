@@ -8,6 +8,7 @@ return {
 			"MunifTanjim/nui.nvim",
 		},
 		config = function(_, opts)
+			local config
 			-- Modules
 			local curl = require("plenary.curl")
 			local Menu = require("nui.menu")
@@ -66,11 +67,58 @@ return {
 				})
 				vim.fn.writefile({ data }, config_file)
 			end
+			local function save_api_key(key)
+				local config_dir = vim.fn.stdpath("data")
+				local config_file = config_dir .. "/openrouter_key"
+				vim.fn.writefile({ key }, config_file)
+			end
+
+			local function load_api_key()
+				local config_file = vim.fn.stdpath("data") .. "/openrouter_key"
+				if vim.fn.filereadable(config_file) == 1 then
+					local lines = vim.fn.readfile(config_file)
+					return lines[1]
+				end
+				return nil
+			end
+
+			local function prompt_api_key(callback)
+				local Input = require("nui.input")
+				local input = Input({
+					position = "50%",
+					size = { width = 60 },
+					border = {
+						style = "rounded",
+						text = {
+							top = "[OpenRouter API Key]",
+							top_align = "center",
+						},
+					},
+					win_options = {
+						winhighlight = "Normal:Normal,FloatBorder:Normal",
+					},
+				}, {
+					prompt = "> ",
+					default_value = "",
+					on_submit = function(value)
+						if value and value ~= "" then
+							save_api_key(value)
+							config.api_key = value
+							vim.env.OPENROUTER_API_KEY = value
+							vim.notify("API key saved", "info")
+							if callback then
+								callback()
+							end
+						end
+					end,
+				})
+				input:mount()
+			end
 
 			-- Configuration
 			local saved_prompt, saved_model = load_saved_config()
-			local config = {
-				api_key = vim.env.OPENROUTER_API_KEY,
+			config = {
+				api_key = load_api_key() or vim.env.OPENROUTER_API_KEY,
 				models = {
 					{
 						name = "Hermes 3 405B",
@@ -839,14 +887,23 @@ return {
 			end
 
 			vim.api.nvim_create_user_command("LLM", function()
-				local bufnr = create_or_get_buffer()
-				vim.cmd("botright vsplit")
-				local win = vim.api.nvim_get_current_win()
-				vim.api.nvim_win_set_buf(win, bufnr)
-				vim.wo[win].wrap = true
-				vim.wo[win].linebreak = true
-				vim.wo[win].breakindent = true
-				vim.cmd("stopinsert")
+				local function open_llm()
+					local bufnr = create_or_get_buffer()
+					vim.cmd("botright vsplit")
+					local win = vim.api.nvim_get_current_win()
+					vim.api.nvim_win_set_buf(win, bufnr)
+					vim.wo[win].wrap = true
+					vim.wo[win].linebreak = true
+					vim.wo[win].breakindent = true
+					vim.cmd("stopinsert")
+				end
+
+				if not config.api_key then
+					vim.notify("OpenRouter API key not found", "warn")
+					prompt_api_key(open_llm)
+				else
+					open_llm()
+				end
 			end, {})
 
 			vim.keymap.set("n", "<leader>lo", function()
