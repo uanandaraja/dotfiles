@@ -121,24 +121,20 @@ return {
 				api_key = load_api_key() or vim.env.OPENROUTER_API_KEY,
 				models = {
 					{
-						name = "Hermes 3 405B",
-						id = "nousresearch/hermes-3-llama-3.1-405b:free",
-					},
-					{
-						name = "Meta Llama 3 405B Free",
-						id = "meta-llama/llama-3.1-405b-instruct:free",
-					},
-					{
-						name = "Claude 3.5 Sonnet (Beta)",
-						id = "anthropic/claude-3.5-sonnet:beta",
-					},
-					{
 						name = "Claude 3.5 Sonnet New",
 						id = "anthropic/claude-3.5-sonnet",
 					},
 					{
 						name = "Claude 3.5 Sonnet Old",
 						id = "anthropic/claude-3.5-sonnet-20240620",
+					},
+					{
+						name = "Claude 3.5 Haiku",
+						id = "anthropic/claude-3-5-haiku",
+					},
+					{
+						name = "Hermes 3 405B",
+						id = "nousresearch/hermes-3-llama-3.1-405b:free",
 					},
 					{
 						name = "GPT-4o",
