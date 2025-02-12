@@ -1,0 +1,15 @@
+font-family = "TX-02-XlabMono Regular"
+font-size = 15
+cursor-style = block
+macos-titlebar-style = hidden
+macos-icon = custom-style
+macos-icon-frame = beige
+macos-icon-ghost-color = "101010" 
+macos-icon-screen-color = "101010"
+window-decoration = false
+window-padding-balance = true
+window-padding-x = 10,10
+window-padding-y = 5
+theme = "everblush"
+background-opacity = 0.75
+background-blur = true
